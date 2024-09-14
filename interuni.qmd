@@ -23,10 +23,12 @@ test = read.csv("inter-uni-datathon-2024-nsw/train.csv")
 ```
 
 ```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
-#Gender column with the gendercoder package
-test_labs_for_later = test$UserID
+test_labs_for_later = test$TransactionNumber
 male_replacements = c("isnotfemale", "Male", "man", "he")
 female_replacements = c("Female", "fem", "she", "woman")
+
+train$TransactionDate = weekdays(as.Date(train$TransactionDate))
+test$TransactionDate = weekdays(as.Date(test$TransactionDate))
 
 for(i in 1:nrow(train)){
   if(train$Gender[i] %in% male_replacements){
@@ -41,8 +43,8 @@ for(i in 1:nrow(test)){
 }
 
 #Delete useless columns
-train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain, TransactionDate))
-test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain, TransactionDate))
+train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
+test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
 
 
 #Convert Transaction Time to minutes after midnight
@@ -174,8 +176,8 @@ test$Age[test$Age >1000] = test$Age/1000
 test$Age[test$Age < 1 & test$Age > 0] = test$Age[test$Age < 1 & test$Age > 0] * 1000
 test$Age[test$Age <0] = abs(test$Age)
 
-write.csv(train, "clean_train.csv",row.names = FALSE)
-write.csv(test, "clean_test.csv", row.names=FALSE)
+write.csv(train, "actual_clean_train.csv",row.names = FALSE)
+write.csv(test, "actual_clean_test.csv", row.names=FALSE)
 
 ```
 
@@ -226,7 +228,7 @@ model = xgboost(data = dtrain, nround = 10, objective = "binary:logistic")
 
 ```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
 sample_rate = 0.75
-epochs = 10
+epochs = 4
 set.seed(123)
 
 
@@ -241,7 +243,7 @@ for(i in 1:epochs){
   train2 = train[-train_indicies,]
   test2 = fraud_labels[-train_indicies]
   
-  model = xgboost(data = dtrain, nround = 10, objective = "binary:logistic")
+  model = xgboost(data = dtrain, nround = 40, objective = "binary:logistic")
   
   practice_preds = predict(model, train2)
   accuracy = accuracy + (sum(round(practice_preds) == test2)/length(test2))
@@ -257,8 +259,6 @@ actuals = (round(actual_results/epochs))
 
 results = data.frame(TransactionNumber = test_labs_for_later, IsFraud = actuals)
 write.csv(results, file = "xgboost.csv", row.names = FALSE)
-
-
 
 ```
 
