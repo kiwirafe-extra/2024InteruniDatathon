@@ -164,10 +164,13 @@ test$DeviceType[test$DeviceType == "galaxys7"] = "Mobile"
 test$DeviceType[test$DeviceType == "Tablet"] = "Mobile"
 
 train$Age[train$Age >1000] = train$Age/1000
-train$Age[train$Age <0] = train$Age*-1
+train$Age[train$Age < 1 & train$Age > 0] = train$Age[train$Age < 1 & train$Age > 0] * 1000
+train$Age[train$Age <0] = abs(train$Age)
+
 
 test$Age[test$Age >1000] = test$Age/1000
-test$Age[test$Age <0] = test$Age*-1
+test$Age[test$Age < 1 & test$Age > 0] = test$Age[test$Age < 1 & test$Age > 0] * 1000
+test$Age[test$Age <0] = abs(test$Age)
 
 write.csv(train, "clean_train.csv",row.names = FALSE)
 write.csv(test, "clean_test.csv", row.names=FALSE)
