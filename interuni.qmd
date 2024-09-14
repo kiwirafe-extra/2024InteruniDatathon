@@ -10,7 +10,6 @@ library(tidyverse)
 library(visdat)
 library(xgboost)
 library(naivebayes)
-library(gendercoder)
 library(janitor)
 library(gt)
 ```
@@ -22,17 +21,28 @@ test = read.csv("inter-uni-datathon-2024-nsw/train.csv")
 ```
 
 ```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
-vis_miss(train)
-vis_miss(test)
 
-train = train |> mutate(gender_clean = gendercoder::recode_gender(Gender))
-train |> tabyl(gender_clean) |> arrange(desc(n)) |> gt() |>
-  cols_hide(columns = vars(valid_percent)) |> cols_label(gender_clean = "Gender", n = 'Number', percent = 'Percent') |> fmt_percent(columns = percent, decimals = 2)
+#Gender column with the gendercoder package
+
+male_replacements = c("isnotfemale", "Male", "man", "he")
+female_replacements = c("Female", "fem", "she", "woman")
+
+for(i in 1:nrow(train)){
+  if(train$Gender[i] %in% male_replacements){
+    train$Gender[i] = "Male"
+  } else {train$Gender[i] = "Female"}
+}
+
+for(i in 1:nrow(test)){
+  if(test$Gender[i] %in% male_replacements){
+    test$Gender[i] = "Male"
+  } else {test$Gender[i] = "Female"}
+}
+
+#Delete useless columns
+train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
+test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
 
 glimpse(train)
-glimpse(test)
 
-table(train$DeviceType)
-
-ggplot(train) + aes(x=UserTenure) + geom_histogram()
 ```
