@@ -21,7 +21,6 @@ test = read.csv("inter-uni-datathon-2024-nsw/train.csv")
 ```
 
 ```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
-
 #Gender column with the gendercoder package
 
 male_replacements = c("isnotfemale", "Male", "man", "he")
@@ -43,6 +42,113 @@ for(i in 1:nrow(test)){
 train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
 test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
 
-glimpse(train)
+
+#Convert Transaction Time to minutes after midnight
+train$TransactionTime = gsub("/", ":", train$TransactionTime)
+train$TransactionTime = substring(train$TransactionTime, 1, 8)
+
+test$TransactionTime = gsub("/", ":", test$TransactionTime)
+test$TransactionTime = substring(test$TransactionTime, 1, 8)
+
+train$TransactionTime = as.numeric(substring(train$TransactionTime, 1, 2))*60 +
+  as.numeric(substring(train$TransactionTime, 4, 5)) +
+  as.numeric(substring(train$TransactionTime, 7, 8))*(1/60)
+
+test$TransactionTime = as.numeric(substring(test$TransactionTime, 1, 2))*60 +
+  as.numeric(substring(test$TransactionTime, 4, 5)) +
+  as.numeric(substring(test$TransactionTime, 7, 8))*(1/60)
+
+train$Income = parse_number(train$Income)
+test$Income = parse_number(test$Income)
+
+#Expenditure all in the same currency
+train$Expenditure[grepl("AUD", train$Expenditure)] = parse_number(train$Expenditure)
+train$Expenditure[grepl("AU", train$Expenditure)] = parse_number(train$Expenditure)
+train$Expenditure[grepl("AED", train$Expenditure)] = parse_number(train$Expenditure)*0.4
+train$Expenditure = as.numeric(train$Expenditure)
+
+test$Expenditure[grepl("AUD", test$Expenditure)] = parse_number(test$Expenditure)
+test$Expenditure[grepl("AU", test$Expenditure)] = parse_number(test$Expenditure)
+test$Expenditure[grepl("AED", test$Expenditure)] = parse_number(test$Expenditure)*0.4
+test$Expenditure = as.numeric(test$Expenditure)
+
+#Gift Transaction
+train$GiftsTransaction[grepl("£", train$GiftsTransaction)] = parse_number(train$GiftsTransaction)*1.96
+train$GiftsTransaction[grepl("GBP", train$GiftsTransaction)] = parse_number(train$GiftsTransaction)*1.96
+train$GiftsTransaction[grepl("AUD", train$GiftsTransaction)] = parse_number(train$GiftsTransaction)
+train$GiftsTransaction[grepl("AU", train$GiftsTransaction)] = parse_number(train$GiftsTransaction)
+train$GiftsTransaction = as.numeric(train$GiftsTransaction)
+
+test$GiftsTransaction[grepl("£", test$GiftsTransaction)] = parse_number(test$GiftsTransaction)*1.96
+test$GiftsTransaction[grepl("GBP", test$GiftsTransaction)] = parse_number(test$GiftsTransaction)*1.96
+test$GiftsTransaction[grepl("AUD", test$GiftsTransaction)] = parse_number(test$GiftsTransaction)
+test$GiftsTransaction[grepl("AU", test$GiftsTransaction)] = parse_number(test$GiftsTransaction)
+test$GiftsTransaction = as.numeric(test$GiftsTransaction)
+
+#Transaction Amount
+train$TransactionAmount[grepl("AUD", train$TransactionAmount)] = parse_number(train$TransactionAmount)
+train$TransactionAmount[grepl("AU", train$TransactionAmount)] = parse_number(train$TransactionAmount)
+train$TransactionAmount[grepl("AED", train$TransactionAmount)] = parse_number(train$TransactionAmount)*0.4
+train$TransactionAmount = as.numeric(train$TransactionAmount)
+
+test$TransactionAmount[grepl("AUD", test$TransactionAmount)] = parse_number(test$TransactionAmount)
+test$TransactionAmount[grepl("AU", test$TransactionAmount)] = parse_number(test$TransactionAmount)
+test$TransactionAmount[grepl("AED", test$TransactionAmount)] = parse_number(test$TransactionAmount)*0.4
+test$TransactionAmount = as.numeric(test$TransactionAmount)
+
+#Location
+
+
+
+adl_rep = c("ADL","ADELAIDE","ADELAIDE CITY")
+syd_rep = c("SYD", "SYDNEY")
+mlb_rep = c("MLB", "MELB", "MEL", "MELBURN", "MELBOURNE")
+brs_rep = c("BNE", "BRISBANE" )
+hb_rep = c("HOBART", "HBT")
+pth_rep = c("PTH", "PERTH")
+cb_rep = c("CANBERRA", "CBR")
+dw_rep = c("DARWIN", "DRW")
+
+train$TransactionLocation = toupper(train$TransactionLocation)
+for(i in 1:nrow(train)){
+  if(train$TransactionLocation[i] %in% adl_rep){
+    train$TransactionLocation[i] = "ADL"
+  } else if (train$TransactionLocation[i] %in% syd_rep){
+    train$TransactionLocation[i] = "SYD"
+  }else if (train$TransactionLocation[i] %in% mlb_rep){
+    train$TransactionLocation[i] = "MLB"
+  }else if (train$TransactionLocation[i] %in% brs_rep){
+    train$TransactionLocation[i] = "BRS"
+  }else if (train$TransactionLocation[i] %in% hb_rep){
+    train$TransactionLocation[i] = "HB"
+  }else if (train$TransactionLocation[i] %in% pth_rep){
+    train$TransactionLocation[i] = "PTH"
+  }else if (train$TransactionLocation[i] %in% cb_rep){
+    train$TransactionLocation[i] = "CB"
+  }else if (train$TransactionLocation[i] %in% dw_rep){
+    train$TransactionLocation[i] = "DRW"
+  }
+}
+
+test$TransactionLocation = toupper(test$TransactionLocation)
+for(i in 1:nrow(test)){
+  if(test$TransactionLocation[i] %in% adl_rep){
+    test$TransactionLocation[i] = "ADL"
+  } else if (test$TransactionLocation[i] %in% syd_rep){
+    test$TransactionLocation[i] = "SYD"
+  }else if (test$TransactionLocation[i] %in% mlb_rep){
+    test$TransactionLocation[i] = "MLB"
+  }else if (test$TransactionLocation[i] %in% brs_rep){
+    test$TransactionLocation[i] = "BRS"
+  }else if (test$TransactionLocation[i] %in% hb_rep){
+    test$TransactionLocation[i] = "HB"
+  }else if (test$TransactionLocation[i] %in% pth_rep){
+    test$TransactionLocation[i] = "PTH"
+  }else if (test$TransactionLocation[i] %in% cb_rep){
+    test$TransactionLocation[i] = "CB"
+  }else if (test$TransactionLocation[i] %in% dw_rep){
+    test$TransactionLocation[i] = "DRW"
+  }
+}
 
 ```
