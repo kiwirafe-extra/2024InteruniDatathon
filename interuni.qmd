@@ -12,6 +12,8 @@ library(xgboost)
 library(naivebayes)
 library(janitor)
 library(gt)
+library(caret)
+library(MLmetrics)
 ```
 
 
@@ -22,7 +24,7 @@ test = read.csv("inter-uni-datathon-2024-nsw/train.csv")
 
 ```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
 #Gender column with the gendercoder package
-
+test_labs_for_later = test$UserID
 male_replacements = c("isnotfemale", "Male", "man", "he")
 female_replacements = c("Female", "fem", "she", "woman")
 
@@ -152,13 +154,13 @@ for(i in 1:nrow(test)){
 }
 
 train$DeviceType[train$DeviceType == "mob"] = "Mobile"
-train$DeviceType[train$DeviceType == "Iphone 15"] = "Mobile"
+train$DeviceType[train$DeviceType == "iphone 15"] = "Mobile"
 train$DeviceType[train$DeviceType == "smartphone"] = "Mobile"
 train$DeviceType[train$DeviceType == "galaxys7"] = "Mobile"
 train$DeviceType[train$DeviceType == "Tablet"] = "Mobile"
 
 test$DeviceType[test$DeviceType == "mob"] = "Mobile"
-test$DeviceType[test$DeviceType == "Iphone 15"] = "Mobile"
+test$DeviceType[test$DeviceType == "iphone 15"] = "Mobile"
 test$DeviceType[test$DeviceType == "smartphone"] = "Mobile"
 test$DeviceType[test$DeviceType == "galaxys7"] = "Mobile"
 test$DeviceType[test$DeviceType == "Tablet"] = "Mobile"
@@ -176,3 +178,87 @@ write.csv(train, "clean_train.csv",row.names = FALSE)
 write.csv(test, "clean_test.csv", row.names=FALSE)
 
 ```
+
+```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
+fraud_labels = train$IsFraud
+train = subset(train, select = -IsFraud)
+
+
+new_gender = model.matrix(~Gender-1, train)
+new_occupation = model.matrix(~Occupation-1, train)
+new_education = model.matrix(~EducationLevel-1, train)
+new_marital = model.matrix(~MaritalStatus-1, train)
+new_merchant = model.matrix(~MerchantID-1, train)
+new_transaction = model.matrix(~TransactionType-1, train)
+new_location = model.matrix(~TransactionLocation-1, train)
+new_device = model.matrix(~DeviceType-1, train)
+new_terrorism = model.matrix(~Terrorism-1, train)
+
+train = cbind(train, new_gender, new_occupation, new_education, new_marital, new_merchant, new_transaction, new_location, new_device, new_terrorism)
+train = subset(train, select = -c(Gender, Occupation, EducationLevel, MaritalStatus, MerchantID, TransactionType, TransactionLocation, DeviceType, Terrorism))
+
+new_gender = model.matrix(~Gender-1, test)
+new_occupation = model.matrix(~Occupation-1, test)
+new_education = model.matrix(~EducationLevel-1, test)
+new_marital = model.matrix(~MaritalStatus-1, test)
+new_merchant = model.matrix(~MerchantID-1, test)
+new_transaction = model.matrix(~TransactionType-1, test)
+new_location = model.matrix(~TransactionLocation-1, test)
+new_device = model.matrix(~DeviceType-1, test)
+new_terrorism = model.matrix(~Terrorism-1, test)
+
+test = cbind(test, new_gender, new_occupation, new_education, new_marital, new_merchant, new_transaction, new_location, new_device, new_terrorism)
+test = subset(test, select = -c(Gender, Occupation, EducationLevel, MaritalStatus, MerchantID, TransactionType, TransactionLocation, DeviceType, Terrorism))
+
+
+train = data.matrix(train)
+fraud_labels = data.matrix(fraud_labels)
+test = data.matrix(test)
+
+
+dtrain = xgb.DMatrix(train, label = fraud_labels)
+dtest = xgb.DMatrix(test)
+
+
+model = xgboost(data = dtrain, nround = 10, objective = "binary:logistic")
+
+```
+
+```{r, tidy=TRUE, results='hide', results='hold', warning = FALSE, message = FALSE}
+sample_rate = 0.75
+epochs = 10
+set.seed(123)
+
+
+actual_results = numeric(nrow(dtest))
+accuracy = 0
+
+for(i in 1:epochs){
+  train_indicies = sample(1:nrow(train), floor(sample_rate * nrow(train)), replace = FALSE)
+  train1 = train[train_indicies,]
+  test1 = fraud_labels[train_indicies]
+  
+  train2 = train[-train_indicies,]
+  test2 = fraud_labels[-train_indicies]
+  
+  model = xgboost(data = dtrain, nround = 10, objective = "binary:logistic")
+  
+  practice_preds = predict(model, train2)
+  accuracy = accuracy + (sum(round(practice_preds) == test2)/length(test2))
+  conf = confusionMatrix(data=as.factor(round(practice_preds)), reference = as.factor(test2))
+  #print(conf)
+  print(F1_Score(round(practice_preds), test2))
+
+  
+  actual_predicts = predict(model, dtest)
+  actual_results = actual_results + actual_predicts
+}
+actuals = (round(actual_results/epochs))
+
+results = data.frame(TransactionNumber = test_labs_for_later, IsFraud = actuals)
+write.csv(results, file = "xgboost.csv", row.names = FALSE)
+
+
+
+```
+
