@@ -39,8 +39,8 @@ for(i in 1:nrow(test)){
 }
 
 #Delete useless columns
-train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
-test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain))
+train = subset(train, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain, TransactionDate))
+test = subset(test, select = -c(TransactionNumber, Latitude, Longitude, EmailDomain, TransactionDate))
 
 
 #Convert Transaction Time to minutes after midnight
@@ -150,5 +150,26 @@ for(i in 1:nrow(test)){
     test$TransactionLocation[i] = "DRW"
   }
 }
+
+train$DeviceType[train$DeviceType == "mob"] = "Mobile"
+train$DeviceType[train$DeviceType == "Iphone 15"] = "Mobile"
+train$DeviceType[train$DeviceType == "smartphone"] = "Mobile"
+train$DeviceType[train$DeviceType == "galaxys7"] = "Mobile"
+train$DeviceType[train$DeviceType == "Tablet"] = "Mobile"
+
+test$DeviceType[test$DeviceType == "mob"] = "Mobile"
+test$DeviceType[test$DeviceType == "Iphone 15"] = "Mobile"
+test$DeviceType[test$DeviceType == "smartphone"] = "Mobile"
+test$DeviceType[test$DeviceType == "galaxys7"] = "Mobile"
+test$DeviceType[test$DeviceType == "Tablet"] = "Mobile"
+
+train$Age[train$Age >1000] = train$Age/1000
+train$Age[train$Age <0] = train$Age*-1
+
+test$Age[test$Age >1000] = test$Age/1000
+test$Age[test$Age <0] = test$Age*-1
+
+write.csv(train, "clean_train.csv",row.names = FALSE)
+write.csv(test, "clean_test.csv", row.names=FALSE)
 
 ```
